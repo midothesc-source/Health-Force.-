@@ -1,0 +1,6 @@
+{
+  "name": "PulseLog",
+  "description": "Effort-first personal activity, Egyptian meal, and calorie tracker with 7-day rolling weight trends and metabolic context.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

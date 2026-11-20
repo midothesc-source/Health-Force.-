@@ -1,0 +1,249 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidFoodCategory(cat) {
+      return cat in ['BREAKFAST', 'LUNCH', 'DINNER', 'DRINK_SNACK'];
+    }
+
+    function isValidMetabolicState(state) {
+      return state in ['NORMAL_ENERGY', 'MEDICATION_DRAG', 'HIGH_STRESS_LOW_SLEEP'];
+    }
+
+    function isValidWalkPace(pace) {
+      return pace in ['CASUAL_STROLL', 'BRISK_WALK', 'FAST_PACE'];
+    }
+
+    function isValidWeightTag(tag) {
+      return tag in ['NORMAL', 'BLOATED_WATER_RETENTION', 'POST_MEAL'];
+    }
+
+    function isValidUserProfile(data, userId) {
+      return data.userId is string && data.userId == userId &&
+             data.bodyWeightKg is number && data.bodyWeightKg >= 30.0 && data.bodyWeightKg <= 250.0 &&
+             data.estimatedBmrKcal is int && data.estimatedBmrKcal >= 1000 && data.estimatedBmrKcal <= 4000 &&
+             data.baseNeatKcal is int && data.baseNeatKcal >= 0 && data.baseNeatKcal <= 1500 &&
+             data.dailyWalkGoalMinutes is int && data.dailyWalkGoalMinutes >= 10 && data.dailyWalkGoalMinutes <= 240 &&
+             data.dailyWalkGoalKcal is int && data.dailyWalkGoalKcal >= 50 && data.dailyWalkGoalKcal <= 2000 &&
+             data.initialized is bool &&
+             data.sampleDataActive is bool;
+    }
+
+    function isValidDailyContext(data, userId) {
+      return data.userId is string && data.userId == userId &&
+             data.dateEpochDay is int && data.dateEpochDay >= 0 && data.dateEpochDay <= 100000 &&
+             data.metabolicState is string && isValidMetabolicState(data.metabolicState);
+    }
+
+    function isValidFoodPreset(data, userId) {
+      return data.userId is string && data.userId == userId &&
+             data.name is string && data.name.size() >= 1 && data.name.size() <= 120 &&
+             data.calories is int && data.calories >= 0 && data.calories <= 10000 &&
+             data.category is string && isValidFoodCategory(data.category) &&
+             data.sortOrder is int && data.sortOrder >= 0 && data.sortOrder <= 10000 &&
+             data.defaultPreset is bool;
+    }
+
+    function isValidFoodEntry(data, userId) {
+      return data.userId is string && data.userId == userId &&
+             data.dateEpochDay is int && data.dateEpochDay >= 0 && data.dateEpochDay <= 100000 &&
+             data.timestampMillis is int && data.timestampMillis >= 0 &&
+             data.name is string && data.name.size() >= 1 && data.name.size() <= 120 &&
+             data.calories is int && data.calories >= 0 && data.calories <= 10000 &&
+             data.category is string && isValidFoodCategory(data.category);
+    }
+
+    function isValidWalkEntry(data, userId) {
+      return data.userId is string && data.userId == userId &&
+             data.dateEpochDay is int && data.dateEpochDay >= 0 && data.dateEpochDay <= 100000 &&
+             data.timestampMillis is int && data.timestampMillis >= 0 &&
+             data.durationMinutes is int && data.durationMinutes >= 1 && data.durationMinutes <= 1440 &&
+             data.pace is string && isValidWalkPace(data.pace) &&
+             (!('distanceKm' in data) || (data.distanceKm is number && data.distanceKm >= 0.0 && data.distanceKm <= 500.0)) &&
+             data.caloriesBurned is int && data.caloriesBurned >= 0 && data.caloriesBurned <= 15000 &&
+             data.manualCalories is bool;
+    }
+
+    function isValidWeightCheckIn(data, userId) {
+      return data.userId is string && data.userId == userId &&
+             data.dateEpochDay is int && data.dateEpochDay >= 0 && data.dateEpochDay <= 100000 &&
+             data.timestampMillis is int && data.timestampMillis >= 0 &&
+             data.weightKg is number && data.weightKg >= 30.0 && data.weightKg <= 250.0 &&
+             data.tag is string && isValidWeightTag(data.tag);
+    }
+
+    match /users/{userId} {
+      allow get: if isOwner(userId) && isValidId(userId);
+      allow list: if false;
+
+      allow create: if isOwner(userId) &&
+                       isValidId(userId) &&
+                       incoming().keys().hasAll([
+                         'userId', 'bodyWeightKg', 'estimatedBmrKcal', 'baseNeatKcal',
+                         'dailyWalkGoalMinutes', 'dailyWalkGoalKcal', 'initialized',
+                         'sampleDataActive', 'createdAt', 'updatedAt'
+                       ]) &&
+                       incoming().keys().hasOnly([
+                         'userId', 'bodyWeightKg', 'estimatedBmrKcal', 'baseNeatKcal',
+                         'dailyWalkGoalMinutes', 'dailyWalkGoalKcal', 'initialized',
+                         'sampleDataActive', 'createdAt', 'updatedAt'
+                       ]) &&
+                       incoming().createdAt is timestamp && incoming().createdAt <= request.time &&
+                       incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                       isValidUserProfile(incoming(), userId);
+
+      allow update: if isOwner(userId) &&
+                       isValidId(userId) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                       isValidUserProfile(incoming(), userId) &&
+                       incoming().diff(existing()).affectedKeys().hasOnly([
+                         'bodyWeightKg', 'estimatedBmrKcal', 'baseNeatKcal',
+                         'dailyWalkGoalMinutes', 'dailyWalkGoalKcal',
+                         'initialized', 'sampleDataActive', 'updatedAt'
+                       ]);
+
+      allow delete: if isOwner(userId) && isValidId(userId);
+
+      match /dailyContexts/{contextId} {
+        allow get: if isOwner(userId) && isValidId(contextId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(contextId) &&
+                         incoming().keys().hasAll(['userId', 'dateEpochDay', 'metabolicState', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'dateEpochDay', 'metabolicState', 'createdAt', 'updatedAt']) &&
+                         incoming().createdAt is timestamp && incoming().createdAt <= request.time &&
+                         incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                         isValidDailyContext(incoming(), userId);
+
+        allow update: if isOwner(userId) &&
+                         isValidId(contextId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                         isValidDailyContext(incoming(), userId) &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['dateEpochDay', 'metabolicState', 'updatedAt']);
+
+        allow delete: if isOwner(userId) && isValidId(contextId);
+      }
+
+      match /foodPresets/{presetId} {
+        allow get: if isOwner(userId) && isValidId(presetId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(presetId) &&
+                         incoming().keys().hasAll(['userId', 'name', 'calories', 'category', 'sortOrder', 'defaultPreset', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'name', 'calories', 'category', 'sortOrder', 'defaultPreset', 'createdAt', 'updatedAt']) &&
+                         incoming().createdAt is timestamp && incoming().createdAt <= request.time &&
+                         incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                         isValidFoodPreset(incoming(), userId);
+
+        allow update: if isOwner(userId) &&
+                         isValidId(presetId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                         isValidFoodPreset(incoming(), userId) &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['name', 'calories', 'category', 'sortOrder', 'defaultPreset', 'updatedAt']);
+
+        allow delete: if isOwner(userId) && isValidId(presetId);
+      }
+
+      match /foodEntries/{entryId} {
+        allow get: if isOwner(userId) && isValidId(entryId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(entryId) &&
+                         incoming().keys().hasAll(['userId', 'dateEpochDay', 'timestampMillis', 'name', 'calories', 'category', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'dateEpochDay', 'timestampMillis', 'name', 'calories', 'category', 'createdAt', 'updatedAt']) &&
+                         incoming().createdAt is timestamp && incoming().createdAt <= request.time &&
+                         incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                         isValidFoodEntry(incoming(), userId);
+
+        allow update: if isOwner(userId) &&
+                         isValidId(entryId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                         isValidFoodEntry(incoming(), userId) &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['dateEpochDay', 'timestampMillis', 'name', 'calories', 'category', 'updatedAt']);
+
+        allow delete: if isOwner(userId) && isValidId(entryId);
+      }
+
+      match /walkEntries/{entryId} {
+        allow get: if isOwner(userId) && isValidId(entryId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(entryId) &&
+                         incoming().keys().hasAll(['userId', 'dateEpochDay', 'timestampMillis', 'durationMinutes', 'pace', 'caloriesBurned', 'manualCalories', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'dateEpochDay', 'timestampMillis', 'durationMinutes', 'pace', 'distanceKm', 'caloriesBurned', 'manualCalories', 'createdAt', 'updatedAt']) &&
+                         incoming().createdAt is timestamp && incoming().createdAt <= request.time &&
+                         incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                         isValidWalkEntry(incoming(), userId);
+
+        allow update: if isOwner(userId) &&
+                         isValidId(entryId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                         isValidWalkEntry(incoming(), userId) &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['dateEpochDay', 'timestampMillis', 'durationMinutes', 'pace', 'distanceKm', 'caloriesBurned', 'manualCalories', 'updatedAt']);
+
+        allow delete: if isOwner(userId) && isValidId(entryId);
+      }
+
+      match /weightCheckIns/{checkInId} {
+        allow get: if isOwner(userId) && isValidId(checkInId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(checkInId) &&
+                         incoming().keys().hasAll(['userId', 'dateEpochDay', 'timestampMillis', 'weightKg', 'tag', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'dateEpochDay', 'timestampMillis', 'weightKg', 'tag', 'createdAt', 'updatedAt']) &&
+                         incoming().createdAt is timestamp && incoming().createdAt <= request.time &&
+                         incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                         isValidWeightCheckIn(incoming(), userId);
+
+        allow update: if isOwner(userId) &&
+                         isValidId(checkInId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                         isValidWeightCheckIn(incoming(), userId) &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['dateEpochDay', 'timestampMillis', 'weightKg', 'tag', 'updatedAt']);
+
+        allow delete: if isOwner(userId) && isValidId(checkInId);
+      }
+    }
+  }
+}

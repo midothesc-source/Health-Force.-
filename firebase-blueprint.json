@@ -1,0 +1,153 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User settings, metabolic baseline, and daily targets scoped per authenticated user.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Owner Firebase Auth UID." },
+        "bodyWeightKg": { "type": "number", "description": "Current body weight in kilograms." },
+        "estimatedBmrKcal": { "type": "integer", "description": "Estimated Basal Metabolic Rate in kcal." },
+        "baseNeatKcal": { "type": "integer", "description": "Baseline daily NEAT burn in kcal." },
+        "dailyWalkGoalMinutes": { "type": "integer", "description": "Daily walking duration goal in minutes." },
+        "dailyWalkGoalKcal": { "type": "integer", "description": "Daily active walk calorie burn goal in kcal." },
+        "initialized": { "type": "boolean", "description": "Whether initial seed completed." },
+        "sampleDataActive": { "type": "boolean", "description": "Whether pre-populated 7-day sample logs are active." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp on create." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp on update." }
+      },
+      "required": [
+        "userId",
+        "bodyWeightKg",
+        "estimatedBmrKcal",
+        "baseNeatKcal",
+        "dailyWalkGoalMinutes",
+        "dailyWalkGoalKcal",
+        "initialized",
+        "sampleDataActive",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "DailyContext": {
+      "title": "DailyContext",
+      "description": "Metabolic energy state for a specific epoch day.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Owner Firebase Auth UID." },
+        "dateEpochDay": { "type": "integer", "description": "UTC-normalized local epoch day." },
+        "metabolicState": {
+          "type": "string",
+          "enum": ["NORMAL_ENERGY", "MEDICATION_DRAG", "HIGH_STRESS_LOW_SLEEP"],
+          "description": "Metabolic context state."
+        },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "dateEpochDay", "metabolicState", "createdAt", "updatedAt"]
+    },
+    "FoodPreset": {
+      "title": "FoodPreset",
+      "description": "Editable quick-tap meal preset for one-handed logging.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "calories": { "type": "integer" },
+        "category": {
+          "type": "string",
+          "enum": ["BREAKFAST", "LUNCH", "DINNER", "DRINK_SNACK"]
+        },
+        "sortOrder": { "type": "integer" },
+        "defaultPreset": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "name", "calories", "category", "sortOrder", "defaultPreset", "createdAt", "updatedAt"]
+    },
+    "FoodEntry": {
+      "title": "FoodEntry",
+      "description": "Logged meal or drink entry.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "dateEpochDay": { "type": "integer" },
+        "timestampMillis": { "type": "integer" },
+        "name": { "type": "string" },
+        "calories": { "type": "integer" },
+        "category": {
+          "type": "string",
+          "enum": ["BREAKFAST", "LUNCH", "DINNER", "DRINK_SNACK"]
+        },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "dateEpochDay", "timestampMillis", "name", "calories", "category", "createdAt", "updatedAt"]
+    },
+    "WalkEntry": {
+      "title": "WalkEntry",
+      "description": "Logged walking or activity session.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "dateEpochDay": { "type": "integer" },
+        "timestampMillis": { "type": "integer" },
+        "durationMinutes": { "type": "integer" },
+        "pace": {
+          "type": "string",
+          "enum": ["CASUAL_STROLL", "BRISK_WALK", "FAST_PACE"]
+        },
+        "distanceKm": { "type": "number" },
+        "caloriesBurned": { "type": "integer" },
+        "manualCalories": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "dateEpochDay", "timestampMillis", "durationMinutes", "pace", "caloriesBurned", "manualCalories", "createdAt", "updatedAt"]
+    },
+    "WeightCheckIn": {
+      "title": "WeightCheckIn",
+      "description": "Daily scale weight check-in with fluid/meal context tag.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "dateEpochDay": { "type": "integer" },
+        "timestampMillis": { "type": "integer" },
+        "weightKg": { "type": "number" },
+        "tag": {
+          "type": "string",
+          "enum": ["NORMAL", "BLOATED_WATER_RETENTION", "POST_MEAL"]
+        },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "dateEpochDay", "timestampMillis", "weightKg", "tag", "createdAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "User-owned metabolic profile and goal preferences."
+    },
+    "/users/{userId}/dailyContexts/{contextId}": {
+      "schema": { "$ref": "#/entities/DailyContext" },
+      "description": "Per-day metabolic context state."
+    },
+    "/users/{userId}/foodPresets/{presetId}": {
+      "schema": { "$ref": "#/entities/FoodPreset" },
+      "description": "Editable Egyptian & personal quick meal presets."
+    },
+    "/users/{userId}/foodEntries/{entryId}": {
+      "schema": { "$ref": "#/entities/FoodEntry" },
+      "description": "Logged food entries."
+    },
+    "/users/{userId}/walkEntries/{entryId}": {
+      "schema": { "$ref": "#/entities/WalkEntry" },
+      "description": "Logged walking sessions."
+    },
+    "/users/{userId}/weightCheckIns/{checkInId}": {
+      "schema": { "$ref": "#/entities/WeightCheckIn" },
+      "description": "Daily weight check-ins with context tags."
+    }
+  }
+}
