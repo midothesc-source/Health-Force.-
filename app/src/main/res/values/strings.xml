@@ -1,10 +1,11 @@
 <resources>
-    <string name="app_name">PulseLog</string>
+    <string name="app_name">HealthForce</string>
     <string name="tab_today">Today</string>
     <string name="tab_food">Log Food</string>
     <string name="tab_walk">Log Walk</string>
     <string name="tab_trends">Trends</string>
     <string name="cd_settings">Open settings and backup</string>
+    <string name="cd_theme_picker">Choose app theme</string>
     <string name="cd_streak">Consistency streak</string>
     <string name="cd_delete_entry">Delete entry</string>
     <string name="cd_edit_entry">Edit entry</string>

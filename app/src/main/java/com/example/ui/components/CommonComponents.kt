@@ -25,6 +25,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.LocalFireDepartment
+import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -109,6 +110,7 @@ fun PulseCard(
 fun TopPulseHeader(
     dateLabel: String,
     streakDays: Int,
+    onOpenThemePicker: () -> Unit,
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -131,7 +133,7 @@ fun TopPulseHeader(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "PulseLog",
+                    text = "HealthForce",
                     style = MaterialTheme.typography.headlineSmall,
                     color = TextPrimary,
                     maxLines = 1,
@@ -178,6 +180,22 @@ fun TopPulseHeader(
                         color = EmeraldAccent
                     )
                 }
+            }
+
+            IconButton(
+                onClick = onOpenThemePicker,
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(CircleShape)
+                    .background(CardSurface)
+                    .border(1.dp, SubtleBorder, CircleShape)
+                    .testTag("theme_picker_button")
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Palette,
+                    contentDescription = stringResource(R.string.cd_theme_picker),
+                    tint = EmeraldAccent
+                )
             }
 
             IconButton(
@@ -230,6 +248,11 @@ fun BalanceEffortRing(
     val netHeadline = if (isDeficit) "-${abs(netBalance)}" else "+$netBalance"
     val netSubLabel = if (isDeficit) "kcal deficit" else "kcal surplus"
 
+    val trackColor = PillSurface
+    val amberColor = AmberAccent
+    val roseColor = RoseAccent
+    val emeraldColor = EmeraldAccent
+
     Box(
         modifier = modifier.size(164.dp),
         contentAlignment = Alignment.Center
@@ -244,7 +267,7 @@ fun BalanceEffortRing(
             val innerSize = Size(size.width - innerInset * 2, size.height - innerInset * 2)
 
             drawArc(
-                color = PillSurface,
+                color = trackColor,
                 startAngle = 135f,
                 sweepAngle = 270f,
                 useCenter = false,
@@ -254,7 +277,7 @@ fun BalanceEffortRing(
             )
             drawArc(
                 brush = Brush.sweepGradient(
-                    listOf(AmberAccent, if (intakeRatio > 1.02f) RoseAccent else AmberAccent)
+                    listOf(amberColor, if (intakeRatio > 1.02f) roseColor else amberColor)
                 ),
                 startAngle = 135f,
                 sweepAngle = animatedIntakeSweep,
@@ -265,7 +288,7 @@ fun BalanceEffortRing(
             )
 
             drawArc(
-                color = PillSurface.copy(alpha = 0.7f),
+                color = trackColor.copy(alpha = 0.7f),
                 startAngle = 135f,
                 sweepAngle = 270f,
                 useCenter = false,
@@ -274,7 +297,7 @@ fun BalanceEffortRing(
                 style = Stroke(width = innerStroke, cap = StrokeCap.Round)
             )
             drawArc(
-                color = EmeraldAccent,
+                color = emeraldColor,
                 startAngle = 135f,
                 sweepAngle = animatedEffortSweep,
                 useCenter = false,

@@ -675,7 +675,7 @@ class TrackerRepository(
             val profileRef = userDoc(uid)
             path = profileRef.path
             val parsed = backupAdapter.fromJson(json)
-                ?: throw IllegalArgumentException("Invalid PulseLog backup JSON format.")
+                ?: throw IllegalArgumentException("Invalid HealthForce backup JSON format.")
 
             val batch = db.batch()
             listOf("dailyContexts", "foodPresets", "foodEntries", "walkEntries", "weightCheckIns").forEach { col ->

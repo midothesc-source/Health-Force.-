@@ -52,6 +52,7 @@ import androidx.compose.ui.unit.dp
 import com.example.data.model.UserSettings
 import com.example.ui.theme.AmberAccent
 import com.example.ui.theme.AmberBorder
+import com.example.ui.theme.AppThemeOption
 import com.example.ui.theme.CardSurface
 import com.example.ui.theme.CardSurfaceElevated
 import com.example.ui.theme.EmeraldAccent
@@ -69,6 +70,8 @@ fun SettingsModalSheet(
     userEmail: String?,
     userDisplayName: String?,
     settings: UserSettings,
+    currentTheme: AppThemeOption,
+    onSelectTheme: (AppThemeOption) -> Unit,
     onDismiss: () -> Unit,
     onSaveSettings: (weightKg: Double, bmr: Int, neat: Int, walkMins: Int, walkKcal: Int) -> Unit,
     onExportToFile: () -> Unit,
@@ -169,6 +172,19 @@ fun SettingsModalSheet(
                     }
                 }
             }
+
+            // Theme Studio Section
+            Text(
+                text = "App Theme (${currentTheme.displayName})",
+                style = MaterialTheme.typography.titleSmall,
+                color = VioletAccent
+            )
+            ThemeSelectorGrid(
+                currentTheme = currentTheme,
+                onSelectTheme = onSelectTheme
+            )
+
+            HorizontalDivider(color = SubtleBorder)
 
             // Metabolism & Goals Section
             Text(
@@ -429,7 +445,7 @@ fun SettingsModalSheet(
                 OutlinedTextField(
                     value = jsonInput,
                     onValueChange = { jsonInput = it },
-                    label = { Text("PulseLog JSON") },
+                    label = { Text("HealthForce JSON") },
                     minLines = 5,
                     maxLines = 8,
                     colors = darkFieldColors(),

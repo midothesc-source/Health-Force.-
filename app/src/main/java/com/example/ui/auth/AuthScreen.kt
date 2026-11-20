@@ -20,14 +20,17 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.border
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.DirectionsWalk
 import androidx.compose.material.icons.filled.AutoGraph
 import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -41,6 +44,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -53,10 +58,10 @@ import androidx.credentials.CredentialManager
 import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
 import androidx.credentials.exceptions.GetCredentialCancellationException
-import com.example.R
 import com.example.ui.components.PulseCard
 import com.example.ui.theme.AmberAccent
 import com.example.ui.theme.AmberSoft
+import com.example.ui.theme.CardSurface
 import com.example.ui.theme.CardSurfaceElevated
 import com.example.ui.theme.EmeraldAccent
 import com.example.ui.theme.EmeraldBorder
@@ -64,6 +69,7 @@ import com.example.ui.theme.EmeraldSoft
 import com.example.ui.theme.RoseAccent
 import com.example.ui.theme.RoseSoft
 import com.example.ui.theme.SlateBackground
+import com.example.ui.theme.SubtleBorder
 import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
 import com.example.ui.theme.VioletAccent
@@ -94,6 +100,18 @@ fun FirebaseAuth.authStateFlow(): Flow<FirebaseUser?> = callbackFlow {
     awaitClose { removeAuthStateListener(listener) }
 }
 
+private fun resolveDefaultWebClientId(context: Context): String? {
+    val resId = context.resources.getIdentifier(
+        "default_web_client_id",
+        "string",
+        context.packageName
+    )
+    if (resId == 0) return null
+    return runCatching { context.getString(resId) }
+        .getOrNull()
+        ?.takeIf { it.isNotBlank() }
+}
+
 fun attemptAutoSignIn(
     context: Context,
     credentialManager: CredentialManager,
@@ -105,9 +123,8 @@ fun attemptAutoSignIn(
         onAuthSuccess()
         return
     }
-    val clientId = try {
-        context.getString(R.string.default_web_client_id)
-    } catch (_: Exception) {
+    val clientId = resolveDefaultWebClientId(context)
+    if (clientId == null) {
         onUnauthenticated()
         return
     }
@@ -143,10 +160,9 @@ fun onGoogleSignInClicked(
     scope: CoroutineScope,
     onAuthCancelled: () -> Unit = {}
 ) {
-    val clientId = try {
-        context.getString(R.string.default_web_client_id)
-    } catch (_: Exception) {
-        onAuthError("Google Sign-In configuration missing: default_web_client_id not found")
+    val clientId = resolveDefaultWebClientId(context)
+    if (clientId == null) {
+        onAuthError("Google Sign-In is not configured for this build (missing OAuth client in app/google-services.json).")
         return
     }
     val signInOption = GetSignInWithGoogleOption.Builder(serverClientId = clientId).build()
@@ -155,7 +171,8 @@ fun onGoogleSignInClicked(
         .build()
     scope.launch {
         try {
-            val cred = credentialManager.getCredential(context as Activity, request).credential
+            val activityContext = (context as? Activity) ?: context
+            val cred = credentialManager.getCredential(activityContext, request).credential
             if (cred is CustomCredential && cred.type == TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
                 val token = GoogleIdTokenCredential.createFrom(cred.data).idToken
                 Firebase.auth.signInWithCredential(GoogleAuthProvider.getCredential(token, null)).await()
@@ -194,6 +211,7 @@ fun signOutUser(
 
 @Composable
 fun AuthScreen(
+    onOpenThemePicker: () -> Unit,
     onAuthSuccess: () -> Unit
 ) {
     val context = LocalContext.current
@@ -203,6 +221,9 @@ fun AuthScreen(
     var isCheckingSession by remember { mutableStateOf(true) }
     var isSigningIn by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    val glowPrimary = EmeraldAccent
+    val glowTertiary = VioletAccent
 
     LaunchedEffect(Unit) {
         attemptAutoSignIn(
@@ -223,12 +244,45 @@ fun AuthScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(SlateBackground)
+            .drawBehind {
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(glowPrimary.copy(alpha = 0.16f), Color.Transparent),
+                        center = Offset(size.width * 0.18f, size.height * 0.14f),
+                        radius = size.maxDimension * 0.55f
+                    )
+                )
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(glowTertiary.copy(alpha = 0.14f), Color.Transparent),
+                        center = Offset(size.width * 0.85f, size.height * 0.82f),
+                        radius = size.maxDimension * 0.5f
+                    )
+                )
+            }
             .safeDrawingPadding()
-            .padding(20.dp),
-        contentAlignment = Alignment.Center
+            .padding(20.dp)
     ) {
+        IconButton(
+            onClick = onOpenThemePicker,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .size(48.dp)
+                .clip(CircleShape)
+                .background(CardSurface)
+                .border(1.dp, SubtleBorder, CircleShape)
+                .testTag("auth_theme_picker_button")
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.Palette,
+                contentDescription = "Choose app theme",
+                tint = EmeraldAccent
+            )
+        }
+
         Column(
             modifier = Modifier
+                .align(Alignment.Center)
                 .fillMaxWidth()
                 .widthIn(max = 480.dp),
             verticalArrangement = Arrangement.spacedBy(18.dp),
@@ -245,7 +299,7 @@ fun AuthScreen(
                         .background(Brush.linearGradient(listOf(EmeraldAccent, AmberAccent)))
                 )
                 Text(
-                    text = "PulseLog",
+                    text = "HealthForce",
                     style = MaterialTheme.typography.displaySmall,
                     color = TextPrimary
                 )

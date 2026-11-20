@@ -528,6 +528,12 @@ private fun DualLayerWeightChartCard(
                     )
                 }
 
+                val gridBorderColor = SubtleBorder
+                val rawLineColor = TextSecondary
+                val rollingColor = AmberAccent
+                val waterTagColor = VioletAccent
+                val centerBgColor = SlateBackground
+
                 // Dual-layer Canvas
                 Canvas(
                     modifier = Modifier
@@ -552,7 +558,7 @@ private fun DualLayerWeightChartCard(
                     listOf(0f, 0.5f, 1f).forEach { frac ->
                         val y = padV + chartH * frac
                         drawLine(
-                            color = SubtleBorder,
+                            color = gridBorderColor,
                             start = Offset(padH, y),
                             end = Offset(size.width - padH, y),
                             strokeWidth = 1.dp.toPx()
@@ -586,7 +592,7 @@ private fun DualLayerWeightChartCard(
                     if (rawStarted) {
                         drawPath(
                             path = rawPath,
-                            color = TextSecondary.copy(alpha = 0.50f),
+                            color = rawLineColor.copy(alpha = 0.50f),
                             style = Stroke(
                                 width = 2.dp.toPx(),
                                 pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f)
@@ -610,7 +616,7 @@ private fun DualLayerWeightChartCard(
                         }
                         drawPath(
                             path = avgPath,
-                            color = AmberAccent,
+                            color = rollingColor,
                             style = Stroke(
                                 width = 3.5.dp.toPx(),
                                 cap = StrokeCap.Round,
@@ -632,9 +638,9 @@ private fun DualLayerWeightChartCard(
                         }
                         pt.rawWeightKg?.let { w ->
                             val dotColor = when (pt.tag) {
-                                com.example.data.model.WeightTag.BLOATED_WATER_RETENTION -> VioletAccent
-                                com.example.data.model.WeightTag.POST_MEAL -> AmberAccent.copy(alpha = 0.7f)
-                                else -> TextSecondary
+                                com.example.data.model.WeightTag.BLOATED_WATER_RETENTION -> waterTagColor
+                                com.example.data.model.WeightTag.POST_MEAL -> rollingColor.copy(alpha = 0.7f)
+                                else -> rawLineColor
                             }
                             drawCircle(
                                 color = dotColor,
@@ -644,12 +650,12 @@ private fun DualLayerWeightChartCard(
                         }
                         pt.rollingAvgKg?.let { avg ->
                             drawCircle(
-                                color = SlateBackground,
+                                color = centerBgColor,
                                 radius = 4.dp.toPx(),
                                 center = Offset(x, yFor(avg))
                             )
                             drawCircle(
-                                color = AmberAccent,
+                                color = rollingColor,
                                 radius = 2.6.dp.toPx(),
                                 center = Offset(x, yFor(avg))
                             )
@@ -711,6 +717,12 @@ private fun SevenDayEffortSummaryCard(
 
         Spacer(modifier = Modifier.height(14.dp))
 
+        val barAccentColor = EmeraldAccent
+        val trackPillColor = PillSurface
+        val mutedDotColor = TextMuted
+        val amberDotColor = AmberAccent
+        val secondaryDotColor = TextSecondary
+
         Canvas(
             modifier = Modifier
                 .fillMaxWidth()
@@ -725,7 +737,7 @@ private fun SevenDayEffortSummaryCard(
             val goalRatio = (walkGoalKcal.toFloat() / maxWalkKcal).coerceIn(0f, 1f)
             val goalY = size.height - 6.dp.toPx() - (maxBarH * goalRatio)
             drawLine(
-                color = EmeraldAccent.copy(alpha = 0.45f),
+                color = barAccentColor.copy(alpha = 0.45f),
                 start = Offset(0f, goalY),
                 end = Offset(size.width, goalY),
                 strokeWidth = 1.2.dp.toPx(),
@@ -739,7 +751,7 @@ private fun SevenDayEffortSummaryCard(
 
                 // Track bar
                 drawRoundRect(
-                    color = PillSurface,
+                    color = trackPillColor,
                     topLeft = Offset(left, bottom - maxBarH),
                     size = Size(barW, maxBarH),
                     cornerRadius = CornerRadius(6.dp.toPx(), 6.dp.toPx())
@@ -750,7 +762,7 @@ private fun SevenDayEffortSummaryCard(
                 val barH = (maxBarH * burnRatio).coerceAtLeast(if (day.walkCalories > 0) 6.dp.toPx() else 0f)
                 if (barH > 0f) {
                     drawRoundRect(
-                        color = EmeraldAccent,
+                        color = barAccentColor,
                         topLeft = Offset(left, bottom - barH),
                         size = Size(barW, barH),
                         cornerRadius = CornerRadius(6.dp.toPx(), 6.dp.toPx())
@@ -759,9 +771,9 @@ private fun SevenDayEffortSummaryCard(
 
                 // Calorie adherence dot above bar
                 val dotColor = when {
-                    !day.isLogged -> TextMuted.copy(alpha = 0.35f)
-                    day.adherenceRatio >= 0.72f -> AmberAccent
-                    else -> TextSecondary
+                    !day.isLogged -> mutedDotColor.copy(alpha = 0.35f)
+                    day.adherenceRatio >= 0.72f -> amberDotColor
+                    else -> secondaryDotColor
                 }
                 drawCircle(
                     color = dotColor,

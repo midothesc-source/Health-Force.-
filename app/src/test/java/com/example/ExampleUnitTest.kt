@@ -4,6 +4,7 @@ import com.example.data.local.SampleDataSeeder
 import com.example.data.model.WalkPace
 import com.example.data.model.calculateWalkActiveCalories
 import com.example.data.model.estimateDistanceKm
+import com.example.ui.theme.AppThemeOption
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -38,5 +39,15 @@ class ExampleUnitTest {
         assertEquals(7, sample.weightCheckIns.size)
         assertEquals(7, sample.walkEntries.size)
         assertTrue(sample.foodEntries.size >= 20)
+    }
+
+    @Test
+    fun `six distinct mesmerizing themes are configured and lookup safely falls back`() {
+        val themes = AppThemeOption.entries
+        assertEquals(6, themes.size)
+        assertEquals(6, themes.map { it.id }.distinct().size)
+        assertEquals(6, themes.map { it.palette.primaryAccent }.distinct().size)
+        assertEquals(AppThemeOption.CYBERPUNK_NEON, AppThemeOption.fromId("cyberpunk_neon"))
+        assertEquals(AppThemeOption.MIDNIGHT_EMERALD, AppThemeOption.fromId("unknown_theme"))
     }
 }

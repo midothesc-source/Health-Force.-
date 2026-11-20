@@ -13,6 +13,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.Crossfade
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
@@ -50,6 +51,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
@@ -66,6 +71,7 @@ import com.example.ui.auth.AuthScreen
 import com.example.ui.auth.authStateFlow
 import com.example.ui.auth.signOutUser
 import com.example.ui.components.SettingsModalSheet
+import com.example.ui.components.ThemePickerModalSheet
 import com.example.ui.components.TopPulseHeader
 import com.example.ui.screens.LogFoodScreen
 import com.example.ui.screens.LogWalkScreen
@@ -73,15 +79,18 @@ import com.example.ui.screens.TodayScreen
 import com.example.ui.screens.TrendsScreen
 import com.example.ui.state.AppTab
 import com.example.ui.theme.AmberAccent
+import com.example.ui.theme.AppThemeOption
 import com.example.ui.theme.CardSurface
 import com.example.ui.theme.CardSurfaceElevated
 import com.example.ui.theme.EmeraldAccent
 import com.example.ui.theme.EmeraldSoft
-import com.example.ui.theme.PulseLogTheme
+import com.example.ui.theme.HealthForceTheme
 import com.example.ui.theme.SlateBackground
 import com.example.ui.theme.SubtleBorder
 import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
+import com.example.ui.theme.ThemePreferences
+import com.example.ui.theme.VioletAccent
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
 import com.google.firebase.firestore.FirebaseFirestore
@@ -97,21 +106,38 @@ class MainActivity : ComponentActivity() {
             navigationBarStyle = SystemBarStyle.dark(AndroidColor.TRANSPARENT)
         )
         setContent {
-            PulseLogTheme {
-                AppNavigation()
+            val context = LocalContext.current
+            var currentTheme by remember { mutableStateOf(ThemePreferences.loadTheme(context)) }
+            val onSelectTheme: (AppThemeOption) -> Unit = { selected ->
+                currentTheme = selected
+                ThemePreferences.saveTheme(context, selected)
+            }
+
+            HealthForceTheme(themeOption = currentTheme) {
+                AppNavigation(
+                    currentTheme = currentTheme,
+                    onSelectTheme = onSelectTheme
+                )
             }
         }
     }
 }
 
 @Composable
-fun AppNavigation() {
+fun AppNavigation(
+    currentTheme: AppThemeOption,
+    onSelectTheme: (AppThemeOption) -> Unit
+) {
     val auth = remember { Firebase.auth }
     val currentUser by auth.authStateFlow().collectAsStateWithLifecycle(initialValue = auth.currentUser)
     val user = currentUser
+    var showThemePicker by rememberSaveable { mutableStateOf(false) }
 
     if (user == null) {
-        AuthScreen(onAuthSuccess = { /* AuthStateListener drives navigation */ })
+        AuthScreen(
+            onOpenThemePicker = { showThemePicker = true },
+            onAuthSuccess = { /* AuthStateListener drives navigation */ }
+        )
     } else {
         key(user.uid) {
             val viewModel: TrackerViewModel = viewModel(
@@ -130,20 +156,34 @@ fun AppNavigation() {
                     }
                 }
             )
-            PulseLogApp(
+            HealthForceApp(
                 viewModel = viewModel,
                 userEmail = user.email,
-                userDisplayName = user.displayName
+                userDisplayName = user.displayName,
+                currentTheme = currentTheme,
+                onSelectTheme = onSelectTheme,
+                onOpenThemePicker = { showThemePicker = true }
             )
         }
+    }
+
+    if (showThemePicker) {
+        ThemePickerModalSheet(
+            currentTheme = currentTheme,
+            onSelectTheme = onSelectTheme,
+            onDismiss = { showThemePicker = false }
+        )
     }
 }
 
 @Composable
-fun PulseLogApp(
+fun HealthForceApp(
     viewModel: TrackerViewModel,
     userEmail: String?,
-    userDisplayName: String?
+    userDisplayName: String?,
+    currentTheme: AppThemeOption,
+    onSelectTheme: (AppThemeOption) -> Unit,
+    onOpenThemePicker: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var selectedTab by rememberSaveable { mutableStateOf(AppTab.TODAY) }
@@ -153,6 +193,8 @@ fun PulseLogApp(
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
     val credentialManager = remember(context) { CredentialManager.create(context) }
+    val glowPrimary = EmeraldAccent
+    val glowTertiary = VioletAccent
 
     LaunchedEffect(Unit) {
         viewModel.events.collect { message ->
@@ -217,8 +259,26 @@ fun PulseLogApp(
     }
 
     Scaffold(
-        modifier = Modifier.fillMaxSize(),
-        containerColor = SlateBackground,
+        modifier = Modifier
+            .fillMaxSize()
+            .background(SlateBackground)
+            .drawBehind {
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(glowPrimary.copy(alpha = 0.12f), Color.Transparent),
+                        center = Offset(size.width * 0.14f, size.height * 0.10f),
+                        radius = size.maxDimension * 0.48f
+                    )
+                )
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(glowTertiary.copy(alpha = 0.10f), Color.Transparent),
+                        center = Offset(size.width * 0.88f, size.height * 0.85f),
+                        radius = size.maxDimension * 0.45f
+                    )
+                )
+            },
+        containerColor = Color.Transparent,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         snackbarHost = {
             SnackbarHost(hostState = snackbarHostState) { data ->
@@ -290,6 +350,7 @@ fun PulseLogApp(
             TopPulseHeader(
                 dateLabel = uiState.todayFormattedDate,
                 streakDays = uiState.consistencyStreakDays,
+                onOpenThemePicker = onOpenThemePicker,
                 onOpenSettings = { showSettings = true }
             )
 
@@ -332,19 +393,21 @@ fun PulseLogApp(
             userEmail = userEmail,
             userDisplayName = userDisplayName,
             settings = uiState.settings,
+            currentTheme = currentTheme,
+            onSelectTheme = onSelectTheme,
             onDismiss = { showSettings = false },
             onSaveSettings = { weight, bmr, neat, walkMins, walkKcal ->
                 viewModel.updateSettings(weight, bmr, neat, walkMins, walkKcal)
                 showSettings = false
             },
             onExportToFile = {
-                exportFileLauncher.launch("pulselog_backup_${System.currentTimeMillis()}.json")
+                exportFileLauncher.launch("healthforce_backup_${System.currentTimeMillis()}.json")
             },
             onCopyJsonBackup = {
                 coroutineScope.launch {
                     viewModel.exportBackupJson().onSuccess { json ->
                         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                        clipboard.setPrimaryClip(ClipData.newPlainText("PulseLog Backup JSON", json))
+                        clipboard.setPrimaryClip(ClipData.newPlainText("HealthForce Backup JSON", json))
                         snackbarHostState.showSnackbar("JSON backup copied to clipboard")
                     }.onFailure { err ->
                         snackbarHostState.showSnackbar("Export failed: ${err.message}")

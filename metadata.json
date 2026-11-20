@@ -1,6 +1,6 @@
 {
-  "name": "PulseLog",
-  "description": "Effort-first personal activity, Egyptian meal, and calorie tracker with 7-day rolling weight trends and metabolic context.",
+  "name": "HealthForce",
+  "description": "Activity and caloric intake tracker with metabolic context, Egyptian meal presets, and 7-day rolling weight trends.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

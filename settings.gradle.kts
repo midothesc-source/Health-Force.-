@@ -22,6 +22,6 @@ dependencyResolutionManagement {
   }
 }
 
-rootProject.name = "PulseLog"
+rootProject.name = "HealthForce"
 
 include(":app")
