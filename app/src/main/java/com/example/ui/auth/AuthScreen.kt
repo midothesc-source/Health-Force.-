@@ -79,6 +79,7 @@ import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential.Companion.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL
 import com.google.firebase.Firebase
+import com.google.firebase.FirebaseApp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.GoogleAuthProvider
@@ -119,6 +120,10 @@ fun attemptAutoSignIn(
     onUnauthenticated: () -> Unit,
     scope: CoroutineScope
 ) {
+    if (FirebaseApp.getApps(context).isEmpty()) {
+        onUnauthenticated()
+        return
+    }
     if (Firebase.auth.currentUser != null) {
         onAuthSuccess()
         return
@@ -161,7 +166,7 @@ fun onGoogleSignInClicked(
     onAuthCancelled: () -> Unit = {}
 ) {
     val clientId = resolveDefaultWebClientId(context)
-    if (clientId == null) {
+    if (clientId == null || FirebaseApp.getApps(context).isEmpty()) {
         onAuthError("Google Sign-In is not configured for this build (missing OAuth client in app/google-services.json).")
         return
     }
